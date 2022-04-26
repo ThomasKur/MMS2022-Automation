@@ -47,7 +47,7 @@ $DefaultLogWindowsEventLog = "CustomPS"
 # Azure Automation
 $RunningInAA = $true
 
-$excludedSerialNumbers = @("Defaultstring", "ToBeFilledByO.E.M.")
+$excludedSerialNumbers = @("Defaultstring", "ToBeFilledByO.E.M.","0")
  
 #region Functions
 ########################################################
