@@ -1,17 +1,27 @@
+Param(
+    $DayAfterDeadline = 2
+)
 Import-module SQLPS
-$SiteCode = "CHQ" # Site code 
-$ProviderMachineName = "CM1.corp.contoso.com" # SMS Provider machine name
+Import-Module ConfigurationManager  
+
+$SiteCode = Get-AutomationVariable -Name SiteCode #"CHQ" 
+$MEMCMDB = Get-AutomationVariable -Name MEMCMDataBase #"ConfigMgr_CHQ" 
+$MEMCMServer = Get-AutomationVariable -Name MEMCMServer # "CM1.corp.contoso.com" 
+
 $initParams = @{}
 if((Get-PSDrive -Name $SiteCode -PSProvider CMSite -ErrorAction SilentlyContinue) -eq $null) {
-    New-PSDrive -Name $SiteCode -PSProvider CMSite -Root $ProviderMachineName @initParams
+    New-PSDrive -Name $SiteCode -PSProvider CMSite -Root $MEMCMServer @initParams
 }
 
 $Query = "SELECT *
-	  , CASE WHEN CollectionName like '%\[REQ]%' ESCAPE '\' AND DateDiff(Day,EnforcementDeadline,GetDate())>7 AND OverrideServiceWindows = 0 THEN 'SETNoMW' END 'Action'
-  FROM [ConfigMgr_CHQ].[dbo].[v_CIAssignment]
+	  , CASE WHEN CollectionName like '%\[REQ]%' ESCAPE '\'
+        AND DateDiff(Day,EnforcementDeadline,GetDate())>$DayAfterDeadline
+        AND OverrideServiceWindows = 0 
+       THEN 'SETNoMW' END 'Action'
+  FROM [dbo].[v_CIAssignment]
   WHERE CollectionName like '%\[REQ]%' ESCAPE '\'"
 
-$NeedsEnforcementDeployments = Invoke-Sqlcmd -ServerInstance CM1 -Database ConfigMgr_CHQ -Query $query 
+$NeedsEnforcementDeployments = Invoke-Sqlcmd -ServerInstance $MEMCMServer  -Database $MEMCMDB -Query $query 
 
 Foreach($NeedsEnforcement in $NeedsEnforcementDeployments){
     If ($NeedsEnforcement.StartTime -lt (Get-date)){

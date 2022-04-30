@@ -1,62 +1,64 @@
-$CMDBServer = 'CM1'
-$DBName = 'ConfigMgr_CHQ'
+Import-module SQLPS
+Import-Module ConfigurationManager  
+
+$MEMCMDB = Get-AutomationVariable -Name MEMCMDataBase #"ConfigMgr_CHQ" 
+$MEMCMServer = Get-AutomationVariable -Name MEMCMServer # "CM1.corp.contoso.com" 
 
 $Query = "
 with CTE As (SELECT
-og.Name 'GroupName'
-,OGM.[Name]
-,OGM.[SiteCode]
-,[IsActive]
-,OGM.[MOGID]
-,[ResourceID]
-,OGM.[MOG_UniqueID]
-,OGM.SequenceNumber
-,[CurrentState]
-,[StateCode]
-,[LockAcquiredTime]
-,[LastStateReportedTime]
-,s.ServerName
-,case when ogm.CurrentState=1 then 'Idle'
-       when ogm.CurrentState=2 then 'Waiting'
-       when ogm.CurrentState=3 then 'In Progress'
-       when ogm.CurrentState=4 then 'Failed'
-       when ogm.CurrentState=5 then 'Reboot Pending'
-       else cast(ogm.CurrentState as nvarchar)
-       end as 'CurrentStateName'
-FROM [CM_MEM].[dbo].[vSMS_OrchestrationGroupMembers] OGM
-join vSMS_OrchestrationGroup og
-on og.MOG_UniqueID=ogm.MOG_UniqueID
-INNER JOIN [dbo].[v_Site] s
-on S.SiteCode = OGM.SiteCode
- 
+    og.Name 'GroupName'
+    ,OGM.[Name]
+    ,OGM.[SiteCode]
+    ,[IsActive]
+    ,OGM.[MOGID]
+    ,[ResourceID]
+    ,OGM.[MOG_UniqueID]
+    ,OGM.SequenceNumber
+    ,[CurrentState]
+    ,[StateCode]
+    ,[LockAcquiredTime]
+    ,[LastStateReportedTime]
+    ,s.ServerName
+    ,CASE WHEN ogm.CurrentState=1 THEN 'Idle'
+        WHEN  ogm.CurrentState=2 THEN 'Waiting'
+        WHEN ogm.CurrentState=3 THEN 'In Progress'
+        WHEN ogm.CurrentState=4 THEN 'Failed'
+        WHEN ogm.CurrentState=5 THEN 'Reboot Pending'
+        ELSE cast(ogm.CurrentState as nvarchar)
+        END as 'CurrentStateName'
+    FROM [dbo].[vSMS_OrchestrationGroupMembers] OGM
+        INNER JOIN vSMS_OrchestrationGroup og
+            on og.MOG_UniqueID=ogm.MOG_UniqueID
+        INNER JOIN [dbo].[v_Site] s
+            on S.SiteCode = OGM.SiteCode
 )
  
 SELECT 
-GroupName
-,[SiteCode]
-,[IsActive]
-,[MOGID]
-,[MOG_UniqueID]
-,[CurrentState]
-,[StateCode]
-,[LockAcquiredTime]
-,ServerName
-,STRING_AGG((cast([ResourceID]as nvarchar(10))+'-'+[name]),',')WITHIN GROUP ( ORDER BY SequenceNumber) 'Resourceids'
+    GroupName
+    ,[SiteCode]
+    ,[IsActive]
+    ,[MOGID]
+    ,[MOG_UniqueID]
+    ,[CurrentState]
+    ,[StateCode]
+    ,[LockAcquiredTime]
+    ,ServerName
+    ,STRING_AGG((cast([ResourceID]as nvarchar(10))+'-'+[name]),',')WITHIN GROUP ( ORDER BY SequenceNumber) 'Resourceids'
 FROM CTE
-Where CurrentState =4
+WHERE CurrentState =4
 GROUP BY GroupName
-,[SiteCode]
-,[IsActive]
-,[MOGID]
-,[MOG_UniqueID]
-,[CurrentState]
-,[StateCode]
-,[LockAcquiredTime]
-,ServerName
- 
+    ,[SiteCode]
+    ,[IsActive]
+    ,[MOGID]
+    ,[MOG_UniqueID]
+    ,[CurrentState]
+    ,[StateCode]
+    ,[LockAcquiredTime]
+    ,ServerName
+
 "
  
-$FailedDevices = Invoke-Sqlcmd -Database $DBName -ServerInstance $CMDBServer -Query $query
+$FailedDevices = Invoke-Sqlcmd -Database $MEMCMDB -ServerInstance $MEMCMServer -Query $query
  
 foreach($FailedDev in $FailedDevices){
     New-PSDrive -Name $FailedDev.SiteCode -PSProvider CMSite -Root $FailedDev.ServerName
