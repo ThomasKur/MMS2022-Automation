@@ -26,7 +26,7 @@ ExitCodes:
     99003: Could not Set ExitMessageRegistry
 #>
 
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess=$True)]
 Param()
 
 ## Manual Variable Definition
@@ -45,7 +45,7 @@ $DefaultLogWindowsEventSource = $ScriptName
 $DefaultLogWindowsEventLog = "CustomPS"
 
 # Azure Automation
-$RunningInAA = $true
+$RunningInAA = $false
 
 $excludedSerialNumbers = @("Defaultstring", "ToBeFilledByO.E.M.","0")
  
